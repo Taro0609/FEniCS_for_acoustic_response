@@ -1,0 +1,86 @@
+#4.equation
+
+a = (
+    ufl.inner(lmbda*ufl.div(u)*ufl.Identity(3) + 2*mu*ufl.sym(ufl.grad(u)), ufl.sym(ufl.grad(v))) * ufl.dx
+    - omega**2 * rho * ufl.inner(u, v) * ufl.dx 
++ a_absorb
+)
+
+L_neumann = inner(g, v) * ds(vibration_tag_value)  # 振動面に表面圧力を入力（Neumann条件）
+
+from dolfinx.fem.petsc import LinearProblem
+
+problem = LinearProblem(a, L_neumann, bcs=[bc], petsc_options={"ksp_type": "preonly", "pc_type": "lu"})
+uh = problem.solve()
+
+#5.solver
+
+from dolfinx.fem import FunctionSpace, Function, form
+from dolfinx.fem.petsc import LinearProblem
+
+V_p = FunctionSpace(mesh, ("Lagrange", 1))
+p = Function(V_p, name="acoustic_pressure")
+
+q = ufl.TestFunction(V_p)
+divu = ufl.div(uh)
+
+a_proj = ufl.inner(ufl.TrialFunction(V_p), q) * ufl.dx
+L_proj = ufl.inner(-K_bulk * divu, q) * ufl.dx
+
+problem_proj = LinearProblem(form(a_proj), form(L_proj), u=p,
+                             petsc_options={"ksp_type": "preonly", "pc_type": "lu"})
+p_h = problem_proj.solve()
+
+#6.visualization
+
+from dolfinx.io import VTKFile
+
+# 変位場（ベクトル）を書き出し
+with VTKFile(MPI.COMM_WORLD, "displacement.vtu", "w") as vtk:
+    vtk.write_function(uh)
+
+# 音圧場（スカラー）を書き出し
+with VTKFile(MPI.COMM_WORLD, "pressure.vtu", "w") as vtk:
+    vtk.write_function(p_h) 
+
+import subprocess
+subprocess.run(["pip", "install", "pyvista"])
+import pyvista as pv
+import numpy as np
+
+grid = pv.read("pressure_p0_000000.vtu")
+print(grid.array_names)
+# 実部・虚部がどの配列名かはファイルにより異なるため要確認
+p_real = grid["f_real"] if "f_real" in grid.array_names else grid["acoustic_pressure_real"]
+p_imag = grid["f_imag"] if "f_imag" in grid.array_names else grid["acoustic_pressure_imag"]
+
+pressure_abs = np.sqrt(p_real**2 + p_imag**2)
+p_ref = 20e-6  # 参照圧力（Pa）
+pressure_db = 20 * np.log10(pressure_abs / p_ref + 1e-12)
+grid["pressure_dB"] = pressure_db
+
+scalar_bar_args = {
+    "title": "Sound Pressure Level [dB]",
+    "title_font_size": 16,
+    "label_font_size": 12,
+    "color": "white",
+    "shadow": True
+}
+
+vmin = np.min (pressure_db)
+vmax = np.max (pressure_db)
+
+plotter = pv.Plotter()
+plotter.add_mesh(grid, scalars="pressure_dB",
+                 cmap="jet",  # "plasma", “viridis”, “jet”
+                 clim=(60, 130),
+                 scalar_bar_args=scalar_bar_args,
+                 show_scalar_bar=True,
+                 smooth_shading=True,
+                 lighting=True,
+                 ambient=0.3,
+                 specular=0.2)
+plotter.set_background("black")
+plotter.show()
+
+
