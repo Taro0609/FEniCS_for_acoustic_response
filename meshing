@@ -1,0 +1,148 @@
+#1.1.ASCII_STLに変換
+import trimesh
+from stl import mesh as npmesh
+import numpy as np
+
+# trimeshで読み込む（バイナリSTLでもOK）
+tm = trimesh.load_mesh("RT_adult.stl")
+
+# numpy-stlで保存するために numpy array に変換
+data = np.zeros(len(tm.faces), dtype=npmesh.Mesh.dtype)
+
+for i, face in enumerate(tm.faces):
+    for j in range(3):
+        data["vectors"][i][j] = tm.vertices[face[j]]
+
+# numpy-stl Meshに変換して ASCII 形式で保存
+m = npmesh.Mesh(data)
+m.save("RT_adult_ascii.stl", mode=npmesh.stl.Mode.ASCII)
+
+print("✅ ASCII STLとして保存しました → RT_adult_ascii.stl")
+
+#1.2.非多様体点の除去
+
+import numpy as np
+import trimesh
+
+# メッシュ読み込み
+tm = trimesh.load_mesh("PP_adult_ascii3.stl")
+
+# エッジをソート済みで取得
+edges = tm.edges_sorted
+edges_unique, edges_counts = np.unique(edges, axis=0, return_counts=True)
+
+# 非多様体エッジは3回以上共有されているエッジ
+non_manifold_edges = edges_unique[edges_counts > 2]
+print(f"Non-manifold edges found: {len(non_manifold_edges)}")
+faces_to_remove = set()
+if len(non_manifold_edges) > 0:
+    # 各非多様体エッジに含まれる面を探す
+    for edge in non_manifold_edges:
+        # edgeは頂点番号のペア
+        # facesの中でedgeを含むものを列挙
+        # tm.facesは面の3頂点番号が入った配列
+        mask1 = (tm.faces == edge[0])
+        mask2 = (tm.faces == edge[1])
+        # edge両端頂点を両方含む面
+        faces_with_edge = np.where(np.logical_and(mask1.any(axis=1), mask2.any(axis=1)))[0]
+        for f in faces_with_edge:
+            faces_to_remove.add(f)
+print(f"Faces to remove because of non-manifold edges: {len(faces_to_remove)}")
+    # 除去する面番号のリスト
+faces_to_keep = np.array([i for i in range(len(tm.faces)) if i not in faces_to_remove])
+
+    # メッシュ更新（除去面を抜く）
+tm.update_faces(faces_to_keep)
+
+    # 可能なら法線修正
+try:
+        tm.fix_normals()
+except Exception as e:
+        print("fix_normals() failed:", e)
+
+    # 修正後の状態をチェック
+        print("After removal:")
+        print("Faces count:", len(tm.faces))
+        print("Watertight?:", tm.is_watertight)
+else:
+        print("No non-manifold edges found, no removal performed.")
+
+# 修正済みメッシュを ASCII STL で保存
+tm.export("VS_adult_ascii_fixed.stl", file_type="stl")
+
+print("✅ Exported as 'VS_adult_ascii_fixed.stl'")
+
+#1.3.メッシング
+@Jupyter notebook
+import gmsh
+gmsh.initialize()
+gmsh.model.add("ascii_fixed")
+gmsh.merge("VS_adult2_ascii.stl") 				## STLファイルを読み込み（表面メッシュをインポート）
+gmsh.model.mesh.removeDuplicateNodes()		#重複頂点の削除 
+gmsh.model.occ.synchronize()
+nodes = gmsh.model.mesh.getNodes()
+print("節点数:", len(nodes[1]))
+
+# サーフェイスを分類してジオメトリ化（穴のあるメッシュもパラメータ化）
+import math
+angle = math.radians(75.0)  # 閾値角度（ラジアン）、必要に応じて変更
+curveAngle = math.radians(180.0)
+gmsh.model.mesh.classifySurfaces(angle, True, True, curveAngle, True)
+gmsh.model.mesh.createGeometry()		
+
+# 閉じた表面ループから体積を作成
+gmsh.model.geo.synchronize()
+surfaces = [s[1] for s in gmsh.model.getEntities(2)]
+loop = gmsh.model.geo.addSurfaceLoop(surfaces)
+volume = gmsh.model.geo.addVolume([loop])
+gmsh.model.geo.synchronize()
+
+# 均質なメッシュサイズ指定
+gmsh.option.setNumber("Mesh.CharacteristicLengthMin", 0.1)   # ≒ λ / 30
+gmsh.option.setNumber("Mesh.CharacteristicLengthMax", 0.2)   # ≒ λ / 15, エラーするなら0.5と大きくする
+
+# 物理グループ（体積）を設定（タグ=1）
+gmsh.model.addPhysicalGroup(3, [volume], tag=1)
+
+# メッシュ生成
+gmsh.model.mesh.generate(3)
+
+#エラーが返ってきたらこれで体積の有無をチェック
+volumes = gmsh.model.getEntities(dim=3)
+print("Volumes:", volumes)
+
+# FEniCS向けにMSHフォーマット2.2で保存
+gmsh.option.setNumber("Mesh.MshFileVersion", 2.2)
+gmsh.write("output.msh")
+gmsh.finalize()
+
+# 体積とエッジ長の計算
+
+import pyvista as pv
+import numpy as np
+import trimesh
+
+# メッシュ読み込み
+tm = trimesh.load_mesh("RT_adult_ascii.stl")
+
+mesh = pv.read("output.msh")
+mesh = mesh.compute_cell_sizes(length=True, volume=True)
+
+print("平均体積:", mesh["Volume"].mean())
+print("最小体積:", mesh["Volume"].min())
+print("最大体積:", mesh["Volume"].max())
+
+#平均、最小、最大体積が出力される
+
+import numpy as np
+
+edges = tm.edges_unique  # 重複しないエッジの頂点番号ペア (n, 2)
+vertices = tm.vertices
+
+edge_lengths = np.linalg.norm(vertices[edges[:, 0]] - vertices[edges[:, 1]], axis=1)
+
+print("平均エッジ長:", edge_lengths.mean())
+print("最小エッジ長:", edge_lengths.min())
+print("最大エッジ長:", edge_lengths.max())
+
+#平均、最小、最大エッジ長が出力される
