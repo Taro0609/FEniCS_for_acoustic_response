@@ -1,0 +1,280 @@
+
+#PowerShellでDockerコンテナを起動
+docker run -ti -v ${PWD}:/home/fenics/shared -w /home/fenics/shared dolfinx/dolfinx:v0.7.3 bash -c "source dolfinx-complex-mode && bash"
+
+#python3
+
+#Gmshメッシュの読み込み
+
+from mpi4py import MPI
+from dolfinx.io import gmshio
+comm = MPI.COMM_WORLD
+mesh, cell_tags, facet_tags = gmshio.read_from_msh("output.msh", comm, rank=0, gdim=3)
+
+#2.材料パラメータと関数空間の設定
+import numpy as np
+import ufl
+from dolfinx.fem import FunctionSpace, Constant
+from petsc4py import PETSc
+from dolfinx import fem
+
+E = 31.3e9        # ヤング率 (Pa)  — 皮質骨相当
+nu = 0.3        # ポアソン比
+rho = 2400.0    # 密度 (kg/m³)
+mu = E / (2 * (1 + nu))
+lmbda = E * nu / ((1 + nu) * (1 - 2 * nu))
+K_bulk = E / (3 * (1 - 2 * nu))  # 体積弾性率
+omega = 2 * np.pi * 50.0				# 加振周波数
+c = 3512				# 音速（骨内部）
+Z0 = rho * c
+alpha = 0.93
+R_abs = np.sqrt(1 - alpha)
+Z_r = (1 + R_abs) / (1 - R_abs)
+Z_a = Z_r * Z0
+# 複素係数gammaをPETSc.ScalarTypeで定義
+gamma = fem.Constant(mesh, PETSc.ScalarType(1j * omega * rho / Z_a))
+V = fem.VectorFunctionSpace(mesh, ("Lagrange", 1))
+u = ufl.TrialFunction(V)
+v = ufl.TestFunction(V)
+
+#3.境界条件・加振点設定のための情報取得
+#XcXsrv起動
+
+#3.1.加振面（方形骨腹側端）
+  
+import pyvista as pv
+import numpy as np
+
+# メッシュ読み込みと表面抽出（三角形の面だけにする）
+mesh = pv.read("output.msh")
+surface = mesh.extract_surface()
+picked_faces = set()
+
+print("矩形選択（through=True）を複数回行えます")
+print("   → Shift + R → ドラッグ → Qキーでウィンドウを閉じる")
+
+while True:
+    plotter = pv.Plotter()
+
+    picked_ids = []
+
+    # 選択時のコールバック関数
+    def callback(picked):
+        if picked.n_cells == 0:
+            print("⚠️ 面が選択されていません")
+            return
+        ids = picked["vtkOriginalCellIds"] if "vtkOriginalCellIds" in picked.array_names else np.arange(picked.n_cells)
+        picked_faces.update(ids)
+        picked_ids.append(True)
+        print(f"✅ 今回選択された面数: {len(ids)}（累計: {len(picked_faces)}）")
+
+    # メッシュ描画と矩形選択（through=True）
+    plotter.add_mesh(surface, show_edges=True, color="lightgray")
+    plotter.enable_cell_picking(
+        callback=callback,
+        through=True,        
+        show=True,
+        style="surface"
+    )
+    plotter.show()
+
+    if not picked_ids:
+        print("⚠️ 面が選択されませんでした")
+
+    ans = input("続けて選択しますか？ (y/n): ")
+    if ans.lower() != "y":
+        break
+
+# ✅ 抽出と保存処理
+if picked_faces:
+    extracted = surface.extract_cells(list(picked_faces))
+    extracted.save("selected_vibration_faces.vtu")
+    with open("selected_vibration_face_ids.txt", "w") as f:
+        for cid in picked_faces:
+            f.write(f"{cid}\n")
+    print(f"✅ 最終的な選択面数: {len(picked_faces)}")
+    print("保存しました: selected_vibration_faces.vtu / selected_vibration_face_ids.txt")
+else:
+    print("⚠️ 面は選択されませんでした")
+
+#3.2.固定点選択
+
+@jupyter notebook
+
+#以下のスクリプトをpick_point.pyとして保存
+import pyvista as pv
+
+# メッシュの読み込み
+mesh = pv.read("output.vtu")
+
+# ピック時に呼ばれる関数（引数2つ！）
+def on_pick(point, picker):
+    print("🎯 Picked Point Coordinates:", point)
+
+# プロッター生成
+plotter = pv.Plotter()
+plotter.add_mesh(mesh, show_edges=True, color="lightgray")
+
+# ピック有効化（use_picker=True が推奨）
+plotter.enable_point_picking(callback=on_pick, use_picker=True, show_message=True)
+
+# 表示
+plotter.show()
+
+#3.3.吸収境界面選択（側面全体）
+
+import pyvista as pv
+import numpy as np
+
+# メッシュ読み込みと表面抽出（三角形の面だけにする）
+mesh = pv.read("output.msh")
+surface = mesh.extract_surface()
+picked_faces = set()
+
+print("✅ 矩形選択（through=True）を複数回行えます")
+print("   → Shift + R → ドラッグ → Qキーでウィンドウを閉じる")
+
+while True:
+    plotter = pv.Plotter()
+
+    picked_ids = []
+
+    # 選択時のコールバック関数
+    def callback(picked):
+        if picked.n_cells == 0:
+            print("⚠️ 面が選択されていません")
+            return
+        ids = picked["vtkOriginalCellIds"] if "vtkOriginalCellIds" in picked.array_names else np.arange(picked.n_cells)
+        picked_faces.update(ids)
+        picked_ids.append(True)
+        print(f"✅ 今回選択された面数: {len(ids)}（累計: {len(picked_faces)}）")
+
+    # メッシュ描画と矩形選択（through=True）
+    plotter.add_mesh(surface, show_edges=True, color="lightgray")
+    plotter.enable_cell_picking(
+        callback=callback,
+        through=True,        # ←★ ここを変更
+        show=True,
+        style="surface"
+    )
+    plotter.show()
+
+    if not picked_ids:
+        print("⚠️ 面が選択されませんでした")
+
+    ans = input("続けて選択しますか？ (y/n): ")
+    if ans.lower() != "y":
+        break
+
+# ✅ 抽出と保存処理
+if picked_faces:
+    extracted = surface.extract_cells(list(picked_faces))
+    extracted.save("absorb_face.vtu")
+    with open("absorb_face_ids.txt", "w") as f:
+        for cid in picked_faces:
+            f.write(f"{cid}\n")
+    print(f"✅ 最終的な選択面数: {len(picked_faces)}")
+    print("保存しました: absorb_face.vtu / absorb_face_ids.txt")
+else:
+    print("⚠️ 面は選択されませんでした")
+
+
+#4.	境界条件と加振力の設定（Dirichlet条件＋面加振）
+@Docker python3
+保存した面IDファイルを読み込み、対応するフェイス／頂点を特定して Dirichlet 条件や荷重を設定
+
+#4.1.加振面への荷重設定 (Neumann条件)
+方形骨上で選択した点に最も近いメッシュ頂点を求め、その DOF（例: x 軸方向）に単位力を挿入
+
+from dolfinx.fem import Function, FunctionSpace, form
+from ufl import inner, FacetNormal, dot, Measure
+from dolfinx.mesh import locate_entities, meshtags
+import numpy as np
+
+# 加振面のID（facet）を読み込む
+vibration_face_ids = np.loadtxt("selected_vibration_face_ids.txt", dtype=np.int32)
+
+# 加振面のfacetを取得（dim=2）
+tdim = mesh.topology.dim
+fdim = tdim - 1
+mesh.topology.create_connectivity(fdim, tdim)
+mesh.topology.create_connectivity(fdim, 0)
+
+vibration_facets = []
+for f in range(mesh.topology.index_map(fdim).size_local):
+    linked_cells = mesh.topology.connectivity(fdim, tdim).links(f)
+    if any(cell in vibration_face_ids for cell in linked_cells):
+        vibration_facets.append(f)
+vibration_facets = np.array(vibration_facets, dtype=np.int32)
+
+# Meshtagsの定義
+vibration_tag_value = 77  # ← 任意の未使用タグ番号
+vibration_tags = np.full(vibration_facets.shape, vibration_tag_value, dtype=np.int32)
+vibration_meshtags = meshtags(mesh, fdim, vibration_facets, vibration_tags)
+
+# 境界積分 ds の再定義
+ds = Measure("ds", domain=mesh, subdomain_data=vibration_meshtags)
+
+# 圧力の大きさ
+p0 = Constant(mesh, PETSc.ScalarType(63.2))  # 地面振動想定. 130 dB相当の圧力
+
+# 外向き法線ベクトル
+n = FacetNormal(mesh)
+
+# 加振面からのNeumann項（右辺）
+g = -p0 * n
+L_neumann = inner(g, v) * ds(vibration_tag_value)
+
+
+#4.2. 固定境界条件（Dirichlet）
+from dolfinx.mesh import locate_entities
+from dolfinx.fem import locate_dofs_topological, dirichletbc, Function
+import numpy as np
+
+# 固定点の座標（前耳骨内端）
+X0, Y0, Z0 = 387.1526816, 371.64581773, 24.99525503
+
+# 選択関数（atol=許容誤差）
+def point_selector(x):
+    return (
+        np.isclose(x[0], X0, atol=1e-3) &
+        np.isclose(x[1], Y0, atol=1e-3) &
+        np.isclose(x[2], Z0, atol=1e-3)
+    )
+
+# 対象点を取得
+fixed_points = locate_entities(mesh, 0, point_selector)
+
+# DOFを取得
+dofs = locate_dofs_topological(V, 0, fixed_points)
+
+# Dirichlet境界値を定義（複素ゼロ）
+bc_value = Function(V)
+bc_value.x.array[:] = 0.0 + 0.0j
+
+# Dirichlet条件を構築
+bc = dirichletbc(bc_value, dofs)
+
+#4.3.	 吸収境界条件
+
+from dolfinx.mesh import meshtags
+
+#吸収境界の面インデックス読み込み
+absorb_ids = np.loadtxt("absorb_face_ids.txt", dtype=np.int32, ndmin=1)
+domain, cell_tags, facet_tags = gmshio.read_from_msh("output.msh", MPI.COMM_WORLD, 0, gdim=3)
+domain.topology.create_connectivity(fdim, tdim)
+domain.topology.create_connectivity(fdim, 0)
+absorb_facets = []
+for f in range(domain.topology.index_map(fdim).size_local):
+    linked_cells = domain.topology.connectivity(fdim, tdim).links(f)
+    if any(cell in absorb_ids for cell in linked_cells):
+        absorb_facets.append(f)
+absorb_facets = np.array(absorb_facets, dtype=np.int32)
+
+#FacetTag の定義（Tag=99とする）
+absorb_tags = np.full(absorb_facets.shape, 99, dtype=np.int32)
+absorb_tag = meshtags(domain, fdim, absorb_facets, absorb_tags)
+
+#境界積分 ds を再定義
+ds_absorb = ufl.Measure("ds", domain=mesh, subdomain_data=absorb_tag)
+a_absorb = gamma * ufl.inner(u, v) * ds_absorb(99)
