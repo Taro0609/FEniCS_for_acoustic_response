@@ -153,7 +153,7 @@ while True:
     plotter.add_mesh(surface, show_edges=True, color="lightgray")
     plotter.enable_cell_picking(
         callback=callback,
-        through=True,        # ←★ ここを変更
+        through=True,       
         show=True,
         style="surface"
     )
