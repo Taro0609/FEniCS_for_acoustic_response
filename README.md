@@ -59,8 +59,9 @@ The complete workflow consists of five steps.
 1. Generate a volumetric mesh (`output.msh`) from the segmented STL model.
 2. Select the vibration boundary using `pick_vibration_face.py`.
 3. Select the absorbing boundary using `pick_absorption_face.py`.
-4. Run `frequency_sweep_solver.py`.
-5. Analyse simulation outputs using `target_plot.py`.
+4. Prepare target_coordinates.csv
+5. Run `frequency_sweep_solver.py`.
+6. Analyse simulation outputs using `target_plot.py`.
 
 ## Required input files
 
