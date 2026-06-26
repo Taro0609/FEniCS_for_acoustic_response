@@ -116,6 +116,12 @@ This repository provides the finite-element simulation scripts used in the manus
 
 It does not include the original CT datasets or full-resolution segmented anatomical models, because these files are large and are managed separately. Mesh files and derived analysis outputs can be provided through the associated data repository or upon reasonable request, subject to repository size limits and data-use restrictions.
 
+## Reproducibility note
+
+The scripts are provided to document the computational workflow used for the finite-element acoustic-response simulations.
+
+To reproduce the full manuscript analysis, users need the specimen-specific mesh files, selected boundary-face ID files and anatomical target coordinates used for each model.
+
 ## Notes
 
 Specimen-specific meshes and manually selected boundary-condition files are required to reproduce the full analysis.
