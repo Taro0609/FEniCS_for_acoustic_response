@@ -54,12 +54,13 @@ The installation time depends mainly on the Docker image download. Once the imag
 
 ## Workflow
 
-The analysis consists of four steps.
+The complete workflow consists of five steps.
 
-1. Prepare the STL surface mesh and generate a volumetric mesh with Gmsh.
-2. Select the vibration surface and absorbing boundary faces.
-3. Run the frequency-domain acoustic-response solver.
-4. Export displacement and pressure fields for visualization and downstream analysis.
+1. Generate a volumetric mesh (`output.msh`) from the segmented STL model.
+2. Select the vibration boundary using `pick_vibration_face.py`.
+3. Select the absorbing boundary using `pick_absorption_face.py`.
+4. Run `frequency_sweep_solver.py`.
+5. Analyse simulation outputs using `target_plot.py`.
 
 ## Running the simulations
 
