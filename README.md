@@ -62,6 +62,19 @@ The complete workflow consists of five steps.
 4. Run `frequency_sweep_solver.py`.
 5. Analyse simulation outputs using `target_plot.py`.
 
+## Required input files
+
+The solver requires the following files in the working directory:
+
+- `output.msh`  
+  Volumetric mesh generated with Gmsh.
+
+- `selected_vibration_face_ids.txt`  
+  Face IDs defining the vibration boundary.
+
+- `absorb_face_ids.txt`  
+  Face IDs defining the absorbing boundary.
+
 ## Running the simulations
 
 Place the required mesh and boundary-condition files in the working directory.
