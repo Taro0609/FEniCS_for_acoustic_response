@@ -7,14 +7,14 @@ Origin of the snake ear
 The code reproduces the acoustic response simulations used in the study. Statistical analyses and morphometric measurements are not included in this repository unless otherwise stated.
 
 Repository contents
-mesh/
-input/
-output/
-scripts/
-mesh/ : finite-element meshes
-input/ : input files
-output/ : simulation results
-scripts/ : Python scripts for running the analyses
+- `meshing/`  
+  Scripts and files used for mesh preparation.
+
+- `helmholtz_equation/`  
+  Scripts related to the acoustic Helmholtz component of the model.
+
+- `equation_and_solver/`  
+  Scripts for the coupled acoustic–structure calculation and solver settings.
 
 Requirements
 
