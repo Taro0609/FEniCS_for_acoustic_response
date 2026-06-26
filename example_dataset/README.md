@@ -11,4 +11,4 @@ Required files:
 - `absorb_face_ids.txt`
 - `target_coordinates.csv`
 
-The full specimen-specific datasets used in the manuscript will be deposited separately in a public data repository.
+This example dataset corresponds to one representative specimen used to demonstrate the computational workflow. The full dataset used in the manuscript will be deposited in a public repository upon publication.
