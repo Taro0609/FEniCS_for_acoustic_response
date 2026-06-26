@@ -75,6 +75,18 @@ The solver requires the following files in the working directory:
 - `absorb_face_ids.txt`  
   Face IDs defining the absorbing boundary.
 
+## Run order
+
+From inside the `equation_and_solver/` directory:
+
+```bash
+python3 pick_vibration_face.py
+python3 pick_absorption_face.py
+python3 pick_point.py
+python3 frequency_sweep_solver.py
+python3 target_plot.py
+```
+
 ## Running the simulations
 
 Place the required mesh and boundary-condition files in the working directory.
@@ -97,6 +109,12 @@ The main outputs are:
 These files contain complex-valued displacement and pressure fields for each simulated frequency.
 
 The displacement outputs were used to quantify frequency-dependent displacement amplitudes at anatomical output sites, including the columella, footplate and prootic.
+
+## Limitations
+
+This repository provides the finite-element simulation scripts used in the manuscript.
+
+It does not include the original CT datasets or full-resolution segmented anatomical models, because these files are large and are managed separately. Mesh files and derived analysis outputs can be provided through the associated data repository or upon reasonable request, subject to repository size limits and data-use restrictions.
 
 ## Notes
 
