@@ -1,3 +1,31 @@
+"""
+Frequency-domain finite-element solver for the manuscript:
+
+    Origin of the snake ear
+
+This script performs frequency-sweep simulations of acoustic responses
+using FEniCSx/dolfinx.
+
+Input files
+-----------
+output.msh
+    Volumetric mesh generated from Gmsh.
+
+selected_vibration_face_ids.txt
+    Surface IDs defining the vibration boundary.
+
+absorb_face_ids.txt
+    Surface IDs defining the absorbing boundary.
+
+Output
+------
+displacement_p0_*.vtu
+    Complex displacement field for each simulated frequency.
+
+pressure_p0_*.vtu
+    Complex acoustic pressure field for each simulated frequency.
+"""
+
 import os
 import numpy as np
 from mpi4py import MPI
