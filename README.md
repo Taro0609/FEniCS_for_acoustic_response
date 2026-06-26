@@ -76,6 +76,11 @@ The solver requires the following files in the working directory:
 - `absorb_face_ids.txt`  
   Face IDs defining the absorbing boundary.
 
+- `target_coordinates.csv`  
+   Coordinates defining
+   • fixed boundary point
+   • measurement points
+
 ## Run order
 
 From inside the `equation_and_solver/` directory:
@@ -121,7 +126,7 @@ It does not include the original CT datasets or full-resolution segmented anatom
 
 The scripts are provided to document the computational workflow used for the finite-element acoustic-response simulations.
 
-To reproduce the full manuscript analysis, users need the specimen-specific mesh files, selected boundary-face ID files and anatomical target coordinates used for each model.
+To reproduce the full manuscript analysis, users need the specimen-specific mesh files, selected boundary-face ID files and target_coordinates.csv used for each model.
 
 ## Notes
 
@@ -137,9 +142,11 @@ MIT License
 
 If you use this code, please cite:
 
-Nojiri T. et al.
+Nojiri T. et al. (under review).
 **Origin of the snake ear.**
 
 ## Contact
+Correspondence:
 
 Taro Nojiri
+nojiri0805@gmail.com
