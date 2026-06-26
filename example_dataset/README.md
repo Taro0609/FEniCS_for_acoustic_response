@@ -1,6 +1,6 @@
 # Example dataset
 
-This directory contains a representative example dataset for running the finite-element acoustic-response workflow.
+This directory contains a representative example dataset (Dinilysia patagonica) for running the finite-element acoustic-response workflow.
 
 The example is intended to demonstrate the file structure and input files required by the solver.
 
