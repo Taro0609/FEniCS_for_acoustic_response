@@ -1,52 +1,106 @@
-Origin of the Snake Ear: Finite Element Analysis
+# FEniCS acoustic-response simulations
 
-This repository contains the scripts used for the finite element analyses described in the manuscript:
+Code used for the finite-element acoustic-response simulations in the manuscript:
 
-Origin of the snake ear
+**Origin of the snake ear**
 
-The code reproduces the acoustic response simulations used in the study. Statistical analyses and morphometric measurements are not included in this repository unless otherwise stated.
+This repository contains the scripts used to prepare meshes, define boundary conditions, run frequency-domain simulations in FEniCSx/dolfinx, and export displacement and pressure fields.
 
-Repository contents
-- `meshing/`  
-  Scripts and files used for mesh preparation.
+The simulations were used to estimate frequency-dependent mechanical responses of the jaw-ear region under jaw-borne loading.
 
-- `helmholtz_equation/`  
+## Repository contents
+
+* `meshing/`
+  Scripts used for STL preprocessing and generation of volumetric meshes with Gmsh.
+
+* `helmholtz_equation/`
   Scripts related to the acoustic Helmholtz component of the model.
 
-- `equation_and_solver/`  
-  Scripts for the coupled acoustic–structure calculation and solver settings.
+* `equation_and_solver/`
+  Scripts for material-property definition, boundary conditions, frequency-domain solving, and output export.
 
-Requirements
+## System requirements
 
-The simulations were developed using:
+The scripts were run using:
 
-Python 3
-FEniCSx (dolfinx)
-PETSc
-Gmsh
-PyVista
-Docker
+* Python 3
+* Docker
+* FEniCSx / dolfinx v0.7.3
+* Gmsh v4.11
+* PETSc
+* PyVista
+* NumPy
+* mpi4py
+* petsc4py
 
-The analyses were run under Docker to ensure a consistent computational environment.
+The simulations were run in a Docker container using the complex-mode dolfinx environment.
 
-Installation
+## Installation
 
 Install Docker and clone this repository.
 
-The Docker image provides all required software dependencies.
+```bash
+git clone https://github.com/Taro0609/FEniCS_for_acoustic_response.git
+cd FEniCS_for_acoustic_response
+```
 
-Running the simulations
+Start the dolfinx container:
 
-Run the Python scripts in the scripts/ directory after placing the required mesh and input files in the appropriate folders.
+```bash
+docker run -ti -v ${PWD}:/home/fenics/shared -w /home/fenics/shared -e DISPLAY=host.docker.internal:0.0 --network=host dolfinx/dolfinx:v0.7.3 bash -c "source dolfinx-complex-mode && bash"
+```
 
-Simulation outputs are written to the output/ directory.
+The installation time depends mainly on the Docker image download. Once the image is available locally, the container starts within a few minutes on a standard desktop computer.
 
-Reproducing the manuscript
+## Workflow
 
-The repository contains the scripts used to generate the finite element simulations reported in the manuscript.
+The analysis consists of four steps.
 
-The meshes and input files correspond to the specimens analysed in the study.
+1. Prepare the STL surface mesh and generate a volumetric mesh with Gmsh.
+2. Select the vibration surface and absorbing boundary faces.
+3. Run the frequency-domain acoustic-response solver.
+4. Export displacement and pressure fields for visualization and downstream analysis.
 
-License
+## Running the simulations
+
+Place the required mesh and boundary-condition files in the working directory.
+
+Then run the solver script from inside the Docker container:
+
+```bash
+python3 frequency_sweep_solver.py
+```
+
+The solver runs a frequency sweep and writes displacement and pressure outputs as `.vtu` files.
+
+## Expected outputs
+
+The main outputs are:
+
+* `displacement_p0_*.vtu`
+* `pressure_p0_*.vtu`
+
+These files contain complex-valued displacement and pressure fields for each simulated frequency.
+
+The displacement outputs were used to quantify frequency-dependent displacement amplitudes at anatomical output sites, including the columella, footplate and prootic.
+
+## Notes
+
+Specimen-specific meshes and manually selected boundary-condition files are required to reproduce the full analysis.
+
+Large CT-derived mesh files are not stored directly in this repository unless otherwise specified.
+
+## License
 
 MIT License
+
+## Citation
+
+If you use this code, please cite:
+
+Nojiri T. et al.
+**Origin of the snake ear.**
+
+## Contact
+
+Taro Nojiri
